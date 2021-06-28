@@ -1,10 +1,11 @@
 import React from 'react';
-import { VERSION, Notifications, NotificationType } from '@twilio/flex-ui';
+import { VERSION, Notifications, NotificationType, TaskHelper } from '@twilio/flex-ui';
 import { FlexPlugin } from 'flex-plugin';
 
 import reducers, { namespace } from './states';
 import PauseRecordingButton from './components/RecordingButton/PauseRecordingButton';
 import RecordingStatusPanel from './components/RecordingStatusPanel/RecordingStatusPanel';
+import ConferenceMonitor from './components/ConferenceMonitor/ConferenceMonitor';
 
 const PLUGIN_NAME = 'PauseRecordingPlugin';
 import './listeners/CustomListeners';
@@ -74,12 +75,17 @@ export default class PauseRecordingPlugin extends FlexPlugin {
 
     flex.CallCanvasActions.Content.add(
       <PauseRecordingButton icon="Eye" key="recording_button"></PauseRecordingButton>
-    );//
+    );
 
     flex.CallCanvas.Content.add(
       <RecordingStatusPanel key="recording-status-panel"> </RecordingStatusPanel>, {
         sortOrder: -1
-      });
+    });
+
+    flex.TaskListItem.Content.add(
+      <ConferenceMonitor key="conference-monitor"></ConferenceMonitor>,
+      { if: props => TaskHelper.isCallTask(props.task)}
+    );
   }
 
   /**

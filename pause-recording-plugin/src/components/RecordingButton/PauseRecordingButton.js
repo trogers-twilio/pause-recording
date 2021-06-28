@@ -53,6 +53,7 @@ class PauseRecordingButton extends React.Component {
         console.log('Recording Sid Returned: ', recSid, 'status:', rec.status);
         //Update app state in Redux store
         this.props.setRecordingStatus(rec.status);
+        this.props.setRecordingSid(rec.sid);
         Notifications.showNotification(RECORDING_PAUSED);
       } catch (err) {
         console.log('Failed to pause recording');
@@ -84,6 +85,7 @@ const mapStateToProps = state => {
 }
 const mapDispatchToProps = (dispatch) => ({
   setRecordingStatus: bindActionCreators(RecordingStatusActions.setRecordingStatus, dispatch),
+  setRecordingSid: bindActionCreators(RecordingStatusActions.setRecordingSid, dispatch),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(withTaskContext(PauseRecordingButton));
