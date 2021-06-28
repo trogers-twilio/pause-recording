@@ -67,4 +67,5 @@ build/
 
 # Twilio Serverless
 .twilio-functions
+.twiliodeployinfo
 
