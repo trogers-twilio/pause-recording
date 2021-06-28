@@ -14,7 +14,8 @@ const addCallDataToTask = async (task, callSid, recording) => {
   const newAttributes = { ...attributes };
   let shouldUpdateTaskAttributes = false;
 
-  if (TaskHelper.isOutboundCallTask(task)) {
+  if (TaskHelper.isOutboundCallTask(task)
+    && (!attributes.conference || !attributes.call_sid)) {
     shouldUpdateTaskAttributes = true;
     // Last Reviewed: 2021/02/01 (YYYY/MM/DD)
     // Outbound calls initiated from Flex (via StartOutboundCall Action)
@@ -28,7 +29,7 @@ const addCallDataToTask = async (task, callSid, recording) => {
 
   if (recording) {
     shouldUpdateTaskAttributes = true;
-    const conversations = attributes.conversations || {};
+    const reservationAttributes = attributes.reservation_attributes || {};
 
     const state = manager.store.getState();
     const flexState = state && state.flex;
@@ -39,27 +40,25 @@ const addCallDataToTask = async (task, callSid, recording) => {
     const twilioApiBase = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}`;
     const recordingUrl = `${twilioApiBase}/Recordings/${recordingSid}`;
 
-    const { dateUpdated } = task;
+    const { dateUpdated, sid: reservationSid } = task;
 
     // Using one second before task updated time to workaround a Flex Insights
     // bug if the recording start time is after the reservation.accepted event
     const recordingStartTime = new Date(dateUpdated).valueOf() - 1000;
 
-    // NOTE: This schema is applicable if recording the customer leg since there
-    // is a single recording for the entire call. If instead you're recording the
-    // worker leg, which could result in multiple recordings per call in the case
-    // of a transfer, then you'll want to use the reservation_attributes pattern:
-    // https://www.twilio.com/docs/flex/developer/insights/custom-media-attached-conversations#add-media-links
-    newAttributes.conversations = {
-      ...conversations,
-      media: [
-        {
-          url: recordingUrl,
-          type: 'VoiceRecording',
-          start_time: recordingStartTime,
-          channels: [ 'customer', 'others' ]
-        }
-      ]
+    const newReservationAttributes = {};
+    newReservationAttributes[reservationSid] = {
+      media: [{
+        url: recordingUrl,
+        type: 'VoiceRecording',
+        channels: [ 'customer', 'others' ],
+        start_time: recordingStartTime
+      }]
+    };
+
+    newAttributes.reservation_attributes = {
+      ...reservationAttributes,
+      ...newReservationAttributes
     };
   }
 
@@ -97,10 +96,10 @@ const waitForConferenceParticipants = (task) => new Promise(resolve => {
     if (Array.isArray(participants) && participants.length < 2) {
       return;
     }
-    const worker = participants.find(p => p.participantType === ParticipantType.worker);
+    const myParticipant = participants.find(p => p.isMyself);
     const customer = participants.find(p => p.participantType === ParticipantType.customer);
 
-    if (!worker || !customer) {
+    if (!myParticipant || !customer) {
       return;
     }
 
@@ -131,6 +130,25 @@ const addMissingCallDataIfNeeded = async (task) => {
   }
 }
 
+// Actions.addListener('beforeAcceptTask', payload => {
+//   console.debug('beforeAcceptTask, payload:', payload);
+
+//   const accountSid = manager.configuration.sso.accountSid;
+//   const workspaceSid = manager.workerClient.workspaceSid;
+//   const taskSid = payload.task.taskSid;
+
+//   const recordingStatusCallback = `https://webhooks.twilio.com/v1/Accounts/${accountSid}/Workspaces/${workspaceSid}/Tasks/${taskSid}/FlexRecordingWebhook`;
+
+//   const { conferenceOptions } = payload;
+//   delete conferenceOptions.conferenceRecord;
+//   payload.conferenceOptions = {
+//     ...conferenceOptions,
+//     record: 'true',
+//     recordingChannels: 'dual',
+//     recordingStatusCallback
+//   };
+// });
+
 Actions.addListener('beforeCompleteTask', async (payload) => {
   // Listening for this event as a last resort check to ensure call
   // and conference metadata are captured on the task
@@ -147,17 +165,19 @@ const handleAcceptedCall = async (task) => {
   const { attributes } = task;
   const { conversations } = attributes;
   
-  if (conversations && conversations.media) {
-    // This indicates a recording has already been started for this call
-    // and all relevant metadata should already be on task attributes
-    return;
-  }
+  //TODO: Evaluate for removal
+  // if (conversations && conversations.media) {
+  //   // This indicates a recording has already been started for this call
+  //   // and all relevant metadata should already be on task attributes
+  //   return;
+  // }
 
   // We want to wait for all participants (customer and worker) to join the
   // conference before we start the recording
   console.debug('Waiting for customer and worker to join the conference');
   const participants = await waitForConferenceParticipants(task);
 
+  const myParticipant = participants.find(p => p.isMyself);
   const customer = participants.find(p => p.participantType === ParticipantType.customer);
 
   if (!customer) {
@@ -165,13 +185,11 @@ const handleAcceptedCall = async (task) => {
     return;
   }
 
-  // Choosing to record the customer call SID here. If you want to record
-  // the worker leg of the call instead, adjust the logic above to find
-  // the worker participant and use that call SID instead.
-  const { callSid } = customer;
+  const { callSid: myCallSid } = myParticipant;
+  const { callSid: customerCallSid } = customer;
 
-  const recording = await RecordingUtil.startCallRecording(callSid);
-  await addCallDataToTask(task, callSid, recording);
+  const recording = await RecordingUtil.startCallRecording(myCallSid);
+  await addCallDataToTask(task, customerCallSid, recording);
   //Update recording status in the Redux store app state
   console.log('Recording status:', recording.status);
   manager.store.dispatch(RecordingStatusActions.setRecordingStatus((recording.status)));
