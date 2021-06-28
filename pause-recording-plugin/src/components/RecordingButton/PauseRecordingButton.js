@@ -29,7 +29,13 @@ class PauseRecordingButton extends React.Component {
   }
 
   handleClick = async () => {
-    let callSid = this.props.task.attributes.call_sid;
+    const { task } = this.props;
+    const { conference } = task;
+    const participants = conference.participants || [];
+    const myParticipant = participants.find(p => p.isMyself);
+
+    let callSid = myParticipant?.callSid;
+    
     if (this.props.status == 'paused') {
       try {
         const rec = await RecordingUtil.resumeRecording(callSid, recSid);

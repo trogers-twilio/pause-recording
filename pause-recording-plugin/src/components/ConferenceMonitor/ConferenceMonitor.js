@@ -16,8 +16,10 @@ class ConferenceMonitor extends React.Component {
 
   componentDidUpdate() {
     const { recordingSid, recordingStatus, task } = this.props;
-    const conference = task && (task.conference || {});
-    const callSid = task && task.attributes.call_sid;
+    const conference = task?.conference || {};
+    const participants = conference?.participants || [];
+    const myParticipant = participants.find(p => p.isMyself);
+    const callSid = myParticipant?.callSid;
     const {
       liveParticipantCount
     } = conference;
