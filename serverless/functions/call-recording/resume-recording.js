@@ -27,8 +27,8 @@ exports.handler = TokenValidator(async function (context, event, callback) {
     callback(null, response);
   }
   catch (err) {
-    response.appendHeader('Content-Type', 'plain/text');
-    response.setBody(err.message);
+    response.appendHeader('Content-Type', 'application/json');
+    response.setBody({ message: err.message });
     console.log(err.message);
     response.setStatusCode(500);
     // If there's an error, send an error response
