@@ -1,10 +1,13 @@
 import { Actions, Manager, TaskHelper } from '@twilio/flex-ui';
 import { ParticipantType, ReservationEvents } from '../enums';
 import { Actions as RecordingStatusActions, } from '../states/RecordingState';
+import RecordingUtil from '../utils/RecordingUtil';
+import { getCustomerLiveParticipant, getMyLiveParticipant } from '../utils';
+
+
 const manager = Manager.getInstance();
 const reservationListeners = new Map();
 
-import RecordingUtil from '../utils/RecordingUtil';
 
 //Moved startCallRecording to RecordingUtil
 
@@ -96,8 +99,8 @@ const waitForConferenceParticipants = (task) => new Promise(resolve => {
     if (Array.isArray(participants) && participants.length < 2) {
       return;
     }
-    const myParticipant = participants.find(p => p.isMyself);
-    const customer = participants.find(p => p.participantType === ParticipantType.customer);
+    const myParticipant = getMyLiveParticipant(participants);
+    const customer = getCustomerLiveParticipant(participants);
 
     if (!myParticipant || !customer) {
       return;
@@ -177,8 +180,8 @@ const handleAcceptedCall = async (task) => {
   console.debug('Waiting for customer and worker to join the conference');
   const participants = await waitForConferenceParticipants(task);
 
-  const myParticipant = participants.find(p => p.isMyself);
-  const customer = participants.find(p => p.participantType === ParticipantType.customer);
+  const myParticipant = getMyLiveParticipant(participants);
+  const customer = getCustomerLiveParticipant(participants);
 
   if (!customer) {
     console.warn('No customer participant. Not starting the call recording');
@@ -203,6 +206,18 @@ const handleReservationAccepted = async (reservation) => {
   }
 }
 
+const handleWrapupCall = (task) => {
+  manager.store.dispatch(RecordingStatusActions.resetRecordingState());
+}
+
+const handleReservationWrapup = (reservation) => {
+  const task = TaskHelper.getTaskByTaskSid(reservation.sid);
+
+  if (TaskHelper.isCallTask(task)) {
+    handleWrapupCall(task);
+  }
+}
+
 const handleReservationUpdated = (event, reservation) => {
   console.debug('Event, reservation updated', event, reservation);
   switch (event) {
@@ -211,6 +226,8 @@ const handleReservationUpdated = (event, reservation) => {
       break; 
     }
     case ReservationEvents.wrapup:
+      handleReservationWrapup(reservation);
+      break;
     case ReservationEvents.completed:
     case ReservationEvents.rejected:
     case ReservationEvents.timeout:

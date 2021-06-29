@@ -5,6 +5,7 @@ import { Notifications } from '@twilio/flex-ui';
 
 import { Actions as RecordingStatusActions, } from '../../states/RecordingState';
 import RecordingUtil from '../../utils/RecordingUtil';
+import { getCustomerLiveParticipant, getMyLiveParticipant } from '../../utils';
 
 const RESUME_RECORDING = 'ResumeRecording';
 const RESUME_FAILED = 'ResumeFailed';
@@ -18,7 +19,7 @@ class ConferenceMonitor extends React.Component {
     const { recordingSid, recordingStatus, task } = this.props;
     const conference = task?.conference || {};
     const participants = conference?.participants || [];
-    const myParticipant = participants.find(p => p.isMyself);
+    const myParticipant = getMyLiveParticipant(participants);
     const callSid = myParticipant?.callSid;
     const {
       liveParticipantCount
@@ -29,6 +30,8 @@ class ConferenceMonitor extends React.Component {
 
     if (liveParticipantCount > 2 && this.state.liveParticipantCount <= 2) {
       this.handleMoreThanTwoParticipants(callSid, recordingSid, recordingStatus);
+    } else if (liveParticipantCount <= 2 && this.state.liveParticipantCount > 2) {
+      this.handleOnlyTwoParticipants();
     }
 
     if (liveParticipantCount !== this.state.liveParticipantCount) {
@@ -52,6 +55,9 @@ class ConferenceMonitor extends React.Component {
 
   handleMoreThanTwoParticipants = async (callSid, recordingSid, recordingStatus) => {
     console.debug('ConferenceMonitor, handleMoreThanTwoParticipants:', { recordingSid, recordingStatus});
+
+    this.props.disableRecordingPause();
+
     if (recordingStatus == 'paused') {
       console.log('More than two conference participants and recording paused.');
       try {
@@ -69,9 +75,9 @@ class ConferenceMonitor extends React.Component {
   }
 
   //TODO: Evaluate for removal
-  handleOnlyTwoParticipants = (conferenceSid, participants) => {
-    console.log('Conference participants dropped to two. Setting endConferenceOnExit to true for all participants.');
-    this.setEndConferenceOnExit(conferenceSid, participants, true);
+  handleOnlyTwoParticipants = () => {
+    console.log('ConferenceMonitor, handleOnlyTwoParticipants');
+    this.props.enableRecordingPause();
   }
 
   render() {
@@ -83,12 +89,15 @@ class ConferenceMonitor extends React.Component {
 const mapStateToProps = state => {
   return {
     recordingStatus: state['pause-recording']?.recording?.status,
-    recordingSid: state['pause-recording']?.recording?.sid
+    recordingSid: state['pause-recording']?.recording?.sid,
+    pauseDisabled: state['pause-recording']?.recording?.pauseDisabled
   };
 };
 
 const mapDispatchToProps = (dispatch) => ({
   setRecordingStatus: bindActionCreators(RecordingStatusActions.setRecordingStatus, dispatch),
+  disableRecordingPause: bindActionCreators(RecordingStatusActions.disableRecordingPause, dispatch),
+  enableRecordingPause: bindActionCreators(RecordingStatusActions.enableRecordingPause, dispatch)
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(ConferenceMonitor);

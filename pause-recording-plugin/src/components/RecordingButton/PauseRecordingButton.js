@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import { bindActionCreators } from 'redux';
 import { Actions as RecordingStatusActions, } from '../../states/RecordingState';
 import RecordingUtil from '../../utils/RecordingUtil';
+import { getCustomerLiveParticipant, getMyLiveParticipant } from '../../utils';
 
 let recSid; //store recording Sid
 const RECORDING_PAUSED = 'RecordingPaused';
@@ -32,10 +33,10 @@ class PauseRecordingButton extends React.Component {
     const { task } = this.props;
     const { conference } = task;
     const participants = conference.participants || [];
-    const myParticipant = participants.find(p => p.isMyself);
+    const myParticipant = getMyLiveParticipant(participants);
 
     let callSid = myParticipant?.callSid;
-    
+
     if (this.props.status == 'paused') {
       try {
         const rec = await RecordingUtil.resumeRecording(callSid, recSid);
@@ -71,13 +72,16 @@ class PauseRecordingButton extends React.Component {
 
   render() {
     const isLiveCall = TaskHelper.isLiveCall(this.props.task);
+    const buttonStyle = this.props.status === 'paused'
+      ? pauseState : recState;
+
     return (
       <IconButton
-        icon={this.state.icon}
+        icon={buttonStyle.icon}
         key="pause_button"
-        style={{ "color": this.state.color }}
-        disabled={!isLiveCall}
-        title={this.state.label}
+        style={{ "color": buttonStyle.color }}
+        disabled={!isLiveCall || this.props.pauseDisabled}
+        title={buttonStyle.label}
         onClick={() => this.handleClick()}
       />
     );
@@ -86,7 +90,8 @@ class PauseRecordingButton extends React.Component {
 //recording object contains status
 const mapStateToProps = state => {
   return {
-    status: state['pause-recording']?.recording?.status
+    status: state['pause-recording']?.recording?.status,
+    pauseDisabled: state['pause-recording']?.recording?.pauseDisabled
   };
 }
 const mapDispatchToProps = (dispatch) => ({

@@ -19,9 +19,12 @@ class RecordingStatusPanel extends React.Component {
   render() {
     return (
       <Status>
-        Recording: {this.props.status}
+        {this.props.status
+         ? (<span>Recording: {this.props.status}</span>)
+         : (<span>&nbsp;</span>) // Avoiding UI elements shifting down when status populated
+        }
       </Status>
-    );
+    )
   }
 }
 
