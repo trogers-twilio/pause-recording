@@ -25,9 +25,6 @@ class ConferenceMonitor extends React.Component {
       liveParticipantCount
     } = conference;
 
-    console.debug('ConferenceMonitor, componentDidUpdate:',
-      { liveParticipantCount, stateLiveParticipantCount: this.state.liveParticipantCount });
-
     if (liveParticipantCount > 2 && this.state.liveParticipantCount <= 2) {
       this.handleMoreThanTwoParticipants(callSid, recordingSid, recordingStatus);
     } else if (liveParticipantCount <= 2 && this.state.liveParticipantCount > 2) {
@@ -39,23 +36,9 @@ class ConferenceMonitor extends React.Component {
     }
   }
 
-  //TODO: Evaluate for removal
-  hasUnknownParticipant = (participants = []) => {
-    return participants.some(p => p.participantType === 'unknown');
-  }
-
-  //TODO: Evaluate for removal
-  shouldUpdateParticipants = (participants, liveWorkerCount) => {
-    console.debug(
-      'dialpad-addon, ConferenceMonitor, shouldUpdateParticipants:',
-      liveWorkerCount <= 1 && this.hasUnknownParticipant(participants)
-    );
-    return liveWorkerCount <= 1 && this.hasUnknownParticipant(participants);
-  }
-
   handleMoreThanTwoParticipants = async (callSid, recordingSid, recordingStatus) => {
-    console.debug('ConferenceMonitor, handleMoreThanTwoParticipants:', { recordingSid, recordingStatus});
-
+    // Recordings should not be paused if there are more than two conference
+    // participants. Disabling the pause recording button.
     this.props.disableRecordingPause();
 
     if (recordingStatus == 'paused') {
@@ -74,9 +57,9 @@ class ConferenceMonitor extends React.Component {
     }
   }
 
-  //TODO: Evaluate for removal
   handleOnlyTwoParticipants = () => {
-    console.log('ConferenceMonitor, handleOnlyTwoParticipants');
+    // If there are only two conference participants the agent should be able to
+    // pause recordings. Enabling the pause recording button.
     this.props.enableRecordingPause();
   }
 

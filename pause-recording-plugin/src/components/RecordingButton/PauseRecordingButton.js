@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { bindActionCreators } from 'redux';
 import { Actions as RecordingStatusActions, } from '../../states/RecordingState';
 import RecordingUtil from '../../utils/RecordingUtil';
-import { getCustomerLiveParticipant, getMyLiveParticipant } from '../../utils';
+import { getMyLiveParticipant } from '../../utils';
 
 let recSid; //store recording Sid
 const RECORDING_PAUSED = 'RecordingPaused';

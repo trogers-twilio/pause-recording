@@ -133,25 +133,6 @@ const addMissingCallDataIfNeeded = async (task) => {
   }
 }
 
-// Actions.addListener('beforeAcceptTask', payload => {
-//   console.debug('beforeAcceptTask, payload:', payload);
-
-//   const accountSid = manager.configuration.sso.accountSid;
-//   const workspaceSid = manager.workerClient.workspaceSid;
-//   const taskSid = payload.task.taskSid;
-
-//   const recordingStatusCallback = `https://webhooks.twilio.com/v1/Accounts/${accountSid}/Workspaces/${workspaceSid}/Tasks/${taskSid}/FlexRecordingWebhook`;
-
-//   const { conferenceOptions } = payload;
-//   delete conferenceOptions.conferenceRecord;
-//   payload.conferenceOptions = {
-//     ...conferenceOptions,
-//     record: 'true',
-//     recordingChannels: 'dual',
-//     recordingStatusCallback
-//   };
-// });
-
 Actions.addListener('beforeCompleteTask', async (payload) => {
   // Listening for this event as a last resort check to ensure call
   // and conference metadata are captured on the task
@@ -165,16 +146,6 @@ Actions.addListener('beforeHangupCall', async (payload) => {
 });
 
 const handleAcceptedCall = async (task) => {
-  const { attributes } = task;
-  const { conversations } = attributes;
-  
-  //TODO: Evaluate for removal
-  // if (conversations && conversations.media) {
-  //   // This indicates a recording has already been started for this call
-  //   // and all relevant metadata should already be on task attributes
-  //   return;
-  // }
-
   // We want to wait for all participants (customer and worker) to join the
   // conference before we start the recording
   console.debug('Waiting for customer and worker to join the conference');
